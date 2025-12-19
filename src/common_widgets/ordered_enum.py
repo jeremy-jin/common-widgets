@@ -38,13 +38,14 @@ class MetaOptions(object):
 
     def set_ordering(self):
         _order_ = getattr(self.cls, "_order_", None)
-        _ordering = getattr(self.meta, "ordering", None)
+        _ordering = getattr(self.meta, "ordering", [])
         ordering = []
         if _order_ is not None:
-            ordering = _order_
+            ordering = _order_ or []
         else:
             for _o in _ordering:
                 ordering.append(self._get_enum_member(_o))
+
         return ordering
 
     def set_flows(self):
@@ -95,7 +96,7 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
         """
 
         other = self._format__(other)
-        allowed_next = self._meta.flows.get(other) or []
+        allowed_next = self.meta.flows.get(other) or []
         return self in allowed_next
 
     def precedes(self, other):
@@ -104,12 +105,12 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
         """
 
         other = self._format__(other)
-        allowed_next = self._meta.flows.get(self) or []
+        allowed_next = self.meta.flows.get(self) or []
         return other in allowed_next
 
     @property
     def index_(self):
-        return self._meta.ordering.index(self)
+        return self.meta.ordering.index(self)
 
     @classmethod
     def is_comparable(cls, member):
