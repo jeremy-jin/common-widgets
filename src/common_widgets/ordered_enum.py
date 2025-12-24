@@ -1,22 +1,3 @@
-"""
-在 Python 中，enum 的成员是有顺序的。enum 成员的顺序是它们在类定义中出现的顺序。你可以使用 list() 函数将 enum 转换为列表，以查看其成员的顺序。
-以下是一个示例：
-
-    >>> from enum import Enum
-    ... class Color(Enum):
-    ...     RED = 1
-    ...     GREEN = 2
-    ...     BLUE = 3
-    ... # 将枚举转换为列表以查看顺序
-    ... print(list(Color))
-
-输出将是：
-    [<Color.RED: 1>, <Color.GREEN: 2>, <Color.BLUE: 3>]
-
-在这个示例中，Color.RED 是第一个成员，Color.GREEN 是第二个成员，Color.BLUE 是第三个成员。
-这表明 enum 成员的顺序是它们在类定义中出现的顺序。
-"""
-
 from enum import Enum, EnumMeta, _EnumDict
 
 
@@ -71,8 +52,10 @@ class OrderedEnumMetaclass(EnumMeta):
         # inherit previous flags and _generate_next_value_ function
         member_type, first_enum = metacls._get_mixins_(cls, bases)
         if first_enum is not None:
-            enum_dict['_generate_next_value_'] = getattr(
-                first_enum, '_generate_next_value_', None,
+            enum_dict["_generate_next_value_"] = getattr(
+                first_enum,
+                "_generate_next_value_",
+                None,
             )
         return enum_dict
 
@@ -145,7 +128,10 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
             return self.meta.ordering[self.index_ + 1 : other.index_]
         else:
             return self.meta.ordering[
-                -self.meta.len_ordering + other.index_ + 1 : -self.meta.len_ordering + self.index_
+                -len(self.meta.ordering)
+                + other.index_
+                + 1 : -len(self.meta.ordering)
+                + self.index_
             ]
 
     @property
@@ -153,17 +139,17 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
         index = self.index_ - 1
         if index < 0:
             raise IndexError("No previous")
-        return self.meta.len_ordering[index]
+        return self.meta.ordering[index]
 
     @property
     def next_enum_member(self):
         index = self.index_ + 1
-        return self.meta.len_ordering[index]
+        return self.meta.ordering[index]
 
     @property
     def pre_enum_members(self):
-        return self.meta.len_ordering[: self.index_]
+        return self.meta.ordering[: self.index_]
 
     @property
     def next_enum_members(self):
-        return self.meta.len_ordering[self.index_ + 1:]
+        return self.meta.ordering[self.index_ + 1 :]
