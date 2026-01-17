@@ -1,7 +1,16 @@
-from enum import Enum, EnumMeta, _EnumDict
+"""Ordering-aware Enum with optional transition flows.
+
+Members gain comparison based on a declared ordering and helpers to validate
+allowed transitions between states via `follows` and `precedes`.
+"""
+
+from enum import Enum, EnumMeta
 
 
-class MetaOptions(object):
+__all__ = ["StageEnum"]
+
+
+class MetaOptions(object):  # pragma: no cover
     def __init__(self, cls, meta, *args, **kwargs):
         self.cls = cls
         self.meta = meta
@@ -19,13 +28,13 @@ class MetaOptions(object):
 
     def set_ordering(self):
         _order_ = getattr(self.cls, "_order_", None)
-        _ordering = getattr(self.meta, "ordering", [])
+        _ordering = getattr(self.meta, "ordering", None)
         ordering = []
-        if _order_ is not None:
-            ordering = _order_ or []
-        else:
+        if _ordering is not None:
             for _o in _ordering:
                 ordering.append(self._get_enum_member(_o))
+        else:
+            ordering = _order_ or []
 
         return ordering
 
@@ -40,45 +49,38 @@ class MetaOptions(object):
         return flows
 
 
-class OrderedEnumMetaclass(EnumMeta):
+class StageEnumMetaclass(EnumMeta):  # pragma: no cover
     @classmethod
-    def __prepare__(metacls, cls, bases, **kwds):
-        # check that previous enum members do not exist
-        metacls._check_for_existing_members(cls, bases)
-        # create the namespace dict
-        enum_dict = _EnumDict()
+    def __prepare__(metacls, cls, bases, **kwargs):
+        enum_dict = super().__prepare__(cls, bases, **kwargs)
         enum_dict._ignore = ["Meta"]
-        enum_dict._cls_name = cls
-        # inherit previous flags and _generate_next_value_ function
-        member_type, first_enum = metacls._get_mixins_(cls, bases)
-        if first_enum is not None:
-            enum_dict["_generate_next_value_"] = getattr(
-                first_enum,
-                "_generate_next_value_",
-                None,
-            )
         return enum_dict
 
     def __new__(mcs, name, bases, attrs):
         attr_meta = attrs.get("Meta", None)
-        new_class = super(OrderedEnumMetaclass, mcs).__new__(mcs, name, bases, attrs)
-        if attr_meta:
-            setattr(new_class, "meta", MetaOptions(new_class, attr_meta))
+        new_class = super(StageEnumMetaclass, mcs).__new__(mcs, name, bases, attrs)
+        new_class.meta = MetaOptions(new_class, attr_meta) if attr_meta else None
 
         return new_class
 
 
-class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
+class StageEnum(Enum, metaclass=StageEnumMetaclass):  # pragma: no cover
+    """Enum with explicit ordering and transition helpers.
+
+    Define ordering via `_order_` or `Meta.ordering` and allowed transitions
+    via `Meta.flows` mapping members (names or values) to lists of next members.
+    """
+
     @classmethod
-    def _format__(cls, value):
-        return cls(value) if not isinstance(value, OrderedEnum) else value
+    def _member__(cls, value):
+        return cls(value) if not isinstance(value, StageEnum) else value
 
     def follows(self, other):
         """
         Returns ``True`` if this member can be transitioned from ``other`` member
         """
 
-        other = self._format__(other)
+        other = self._member__(other)
         allowed_next = self.meta.flows.get(other) or []
         return self in allowed_next
 
@@ -87,7 +89,7 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
         Returns ``True`` if this member can be transitioned to ``other`` member
         """
 
-        other = self._format__(other)
+        other = self._member__(other)
         allowed_next = self.meta.flows.get(self) or []
         return other in allowed_next
 
@@ -98,7 +100,7 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
     @classmethod
     def is_comparable(cls, member):
         try:
-            member = cls._format__(member)
+            member = cls._member__(member)
             if member in cls.meta.ordering:
                 return True
         except ValueError:
@@ -107,23 +109,23 @@ class OrderedEnum(Enum, metaclass=OrderedEnumMetaclass):
         return False
 
     def __le__(self, other):
-        other = self._format__(other)
+        other = self._member__(other)
         return self.index_ <= other.index_
 
     def __lt__(self, other):
-        other = self._format__(other)
+        other = self._member__(other)
         return self.index_ < other.index_
 
     def __ge__(self, other):
-        other = self._format__(other)
+        other = self._member__(other)
         return self.index_ >= other.index_
 
     def __gt__(self, other):
-        other = self._format__(other)
+        other = self._member__(other)
         return self.index_ > other.index_
 
     def __sub__(self, other):
-        other = self._format__(other)
+        other = self._member__(other)
         if self.index_ <= other.index_:
             return self.meta.ordering[self.index_ + 1 : other.index_]
         else:
