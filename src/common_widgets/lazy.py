@@ -1,6 +1,9 @@
 LAZY_PROPERTIES_FIELD_NAME = "__lazy_properties__"
 
 
+__all__ = ["LazyProperty", "UnLazyProperty"]
+
+
 class LazyProperty:
     """
     Classes with lazy loading properties
