@@ -13,7 +13,10 @@ setup(
     ],
     extras_require={
         'dev': [
-            "black==25.1.0"
+            "black>=25.1.0",
+            "pytest>=9.0.2",
+            "pytest-eventlet>=1.0.0",
+            "coverage>=7.13.1",
         ],
     },
     zip_safe=True
